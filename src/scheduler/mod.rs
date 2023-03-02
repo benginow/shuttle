@@ -3,11 +3,11 @@ use std::fmt::Debug;
 
 mod data;
 mod dfs;
+mod fuzz;
 mod pct;
 mod random;
 mod replay;
 mod round_robin;
-mod fuzz;
 
 pub(crate) mod metrics;
 pub(crate) mod serialization;
@@ -16,11 +16,11 @@ pub(crate) mod serialization;
 pub use crate::runtime::task::TaskId;
 
 pub use dfs::DfsScheduler;
+pub use fuzz::FuzzScheduler;
 pub use pct::PctScheduler;
 pub use random::RandomScheduler;
 pub use replay::ReplayScheduler;
 pub use round_robin::RoundRobinScheduler;
-pub use fuzz::FuzzScheduler;
 
 use arbitrary::Arbitrary;
 
@@ -114,7 +114,7 @@ pub trait Scheduler {
     fn new_execution_fuzz(&mut self, _schedule: Option<Schedule>) -> Option<Schedule> {
         //other than for fuzz scheduler, this will be a no-op
         //basically, just don't be silly and don't use it! haha
-        Some(Schedule::new(0)) 
+        Some(Schedule::new(0))
     }
 }
 

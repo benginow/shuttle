@@ -2,12 +2,12 @@ use crate::runtime::execution::Execution;
 use crate::runtime::task::TaskId;
 use crate::runtime::thread::continuation::{ContinuationPool, CONTINUATION_POOL};
 use crate::scheduler::metrics::MetricsScheduler;
-// use crate::scheduler::fuzzmetric::FuzzMetricsScheduler;
 use crate::scheduler::{Schedule, Scheduler};
 use crate::Config;
+use afl::fuzz;
 use std::cell::RefCell;
 use std::fmt;
-use std::panic::{self, RefUnwindSafe, UnwindSafe, AssertUnwindSafe};
+use std::panic::{self, AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -15,18 +15,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 use tracing::{span, Level};
-use afl::fuzz;
-use std::fs::File;
-use std::io::prelude::*;
-use std::env;
-use crate::scheduler::FuzzScheduler;
-// use tracing_subscriber::FmtSubscriber;
-
-
-
-
-
-
 
 /// A `Runner` is the entry-point for testing concurrent code.
 ///
@@ -63,76 +51,40 @@ impl<S: Scheduler + 'static> Runner<S> {
     where
         F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
     {
-        use std::path::PathBuf;
-
-        let wd = env::current_dir();
-        let mut directory = PathBuf::new();
-        match wd {
-            Ok(w) => {
-                directory = w;
-            }
-            Fail => ()
-        }
-        let location = directory.into_os_string().into_string().unwrap() + "log/output.log";
-
         let this = AssertUnwindSafe(self);
-        // let subscriber = tracing_subscriber::FmtSubscriber::new();
-        // tracing::subscriber::set_global_default(subscriber)?;
-        let mut fl = File::create(location);
-        let mut file;
-        match fl {
-            Ok(f) => {file = f;}
-            Err(e) => {panic!("could not create file foo");}
-        }
-
-        file.write(b"hello");
         let mut i = 0;
-        
-        // Q: is continuation pool here necessary?
-        //move
-       
-            // loop {
-                //give scheduler a schedule
-                
         let f = Arc::new(f);
-                
+
+        tracing::info!("starting fuzzer");
+
         fuzz!(|s: Schedule| {
-    
-            let start = Instant::now();
-            // CONTINUATION_POOL.set(&ContinuationPool::new(), || {
-                
-    
-                
-                panic::AssertUnwindSafe(|| {
-                file.write(b"Current schedule we are exploring is: {s}");
-                if this.config.max_time.map(|t| start.elapsed() > t).unwrap_or(false) {
-                    // simple exit once max time has elapsed
-                    println!("Maximum runtime has elapsed -- if you would like to run for a longer duration, please specify desired run time");
-                    std::process::exit(1);
-                }
-                // self.scheduler.inner.new_execution(s);
-                println!("\nSCHEDULE {s:?}");
-
-                let schedule = match this.scheduler.borrow_mut().new_execution_fuzz(Some(s.clone())) {
-                    None => panic!("do something more intelligent here"),
-                    Some(s) => s,
-                };
-
-                let execution = Execution::new(this.scheduler.clone(), schedule);
-                let f = Arc::clone(&f);
-
-                span!(Level::INFO, "execution", i).in_scope(|| execution.run(&this.config, move || f()));
-
-                i += 1;
+            this.fuzz_inner(f.clone(), s, &mut i);
         });
-    // });
 
-                // });
-            // }
-                
-            
-        });
         i
+    }
+
+    /// Target of the fuzz! macro. Can also use this to replay crash schedules through the fuzz
+    /// scheduler (which computes Schedules a little differently).
+    pub fn fuzz_inner<F>(&self, f: Arc<F>, s: Schedule, i: &mut usize)
+    where
+        F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
+    {
+        tracing::info!("starting schedule {:?}", s);
+
+        CONTINUATION_POOL.set(&ContinuationPool::new(), || {
+            let schedule = match self.scheduler.borrow_mut().new_execution_fuzz(Some(s.clone())) {
+                None => panic!("do something more intelligent here"),
+                Some(s) => s,
+            };
+
+            let execution = Execution::new(self.scheduler.clone(), schedule);
+            let f = Arc::clone(&f);
+
+            span!(Level::INFO, "execution", i).in_scope(|| execution.run(&self.config, move || (*f)()));
+
+            *i += 1;
+        });
     }
 
     /// Test the given function and return the number of times the function was invoked during the

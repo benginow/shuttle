@@ -108,6 +108,23 @@ impl<S: Scheduler> Scheduler for MetricsScheduler<S> {
         self.random_choices += 1;
         self.inner.next_u64()
     }
+
+    fn new_execution_fuzz(&mut self, schedule: Option<Schedule>) -> Option<Schedule> {
+        if self.iterations > 0 {
+            self.record_and_reset_metrics();
+
+            if self.iterations % self.iteration_divisor == 0 {
+                info!(iterations = self.iterations);
+
+                if self.iterations == self.iteration_divisor * 10 {
+                    self.iteration_divisor *= 10;
+                }
+            }
+        }
+        self.iterations += 1;
+
+        self.inner.new_execution_fuzz(schedule)
+    }
 }
 
 impl<S: ?Sized + Scheduler> Drop for MetricsScheduler<S> {
