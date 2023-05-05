@@ -17,6 +17,7 @@ pub use crate::runtime::task::TaskId;
 
 pub use dfs::DfsScheduler;
 pub use fuzz::FuzzScheduler;
+pub use fuzz::CompletionMode;
 pub use pct::PctScheduler;
 pub use random::RandomScheduler;
 pub use replay::ReplayScheduler;

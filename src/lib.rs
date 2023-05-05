@@ -313,30 +313,13 @@ where
 }
 
 
-// for now, no iterations -- just fuck with it
 pub fn check_fuzz<F>(f: F, _iterations: usize)
 where
     F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
 {
-    use crate::scheduler::FuzzScheduler;
-    use std::fs::File;
-    use std::sync::Arc;
-    use tracing_subscriber::{filter, prelude::*};
-    use std::sync::Mutex;
+    use crate::scheduler::{FuzzScheduler, CompletionMode};
 
-    // let file = File::create("logger.txt");
-    // let file = match file  {Ok(file) => file,Err(error) => panic!("Error: {:?}",error),};
-    // let debug_log = tracing_subscriber::fmt::layer()
-    //     .with_writer(Arc::new(file));
-
-
-    tracing_subscriber::fmt()
-                // .with_max_level(filter::LevelFilter::TRACE)
-                // .with_writer(Mutex::new(file))
-                .init();
-
-
-    let scheduler = FuzzScheduler::new();
+    let scheduler = FuzzScheduler::new(CompletionMode::ROUND_ROBIN);
     let runner = Runner::new(scheduler, Default::default());
     runner.run_fuzz(f);
 }
