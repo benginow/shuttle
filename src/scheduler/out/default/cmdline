@@ -1,0 +1,6 @@
+target/debug/fuzz_target
+--
+--test
+find_deadlock_config
+--mode
+FUZZ_PCT

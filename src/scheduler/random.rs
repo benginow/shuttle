@@ -47,6 +47,7 @@ impl Scheduler for RandomScheduler {
             None
         } else {
             self.iterations += 1;
+            tracing::info!("number of iterations {0}", self.iterations);
             Some(Schedule::new(self.data_source.reinitialize()))
         }
     }

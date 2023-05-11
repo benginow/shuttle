@@ -64,6 +64,7 @@ impl Scheduler for PctScheduler {
         if self.iterations >= self.max_iterations {
             return None;
         }
+        tracing::info!("number of iterations {0}", self.iterations);
 
         self.steps = 0;
 

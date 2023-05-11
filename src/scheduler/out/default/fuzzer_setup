@@ -1,0 +1,4 @@
+# environment variables:
+AFL_BENCH_UNTIL_CRASH=1
+# command line:
+'/Users/benginow/.local/share/afl.rs/rustc-1.68.0-nightly-4781233/afl.rs-0.12.14/afl/bin/afl-fuzz' '-i' 'in' '-o' 'out' 'target/debug/fuzz_target' '--' '--test' 'find_deadlock_config' '--mode' 'FUZZ_PCT'

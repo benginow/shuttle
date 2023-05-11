@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 mod data;
 mod dfs;
-mod fuzz;
+pub mod fuzz;
 mod pct;
 mod random;
 mod replay;
