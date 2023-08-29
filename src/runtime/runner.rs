@@ -73,7 +73,7 @@ impl<S: Scheduler + 'static> Runner<S> {
         tracing::info!("starting schedule {:?}", s);
 
         CONTINUATION_POOL.set(&ContinuationPool::new(), || {
-            let schedule = match self.scheduler.borrow_mut().new_execution_fuzz(Some(s.clone())) {
+            let schedule = match self.scheduler.borrow_mut().new_execution_fuzz(Some(s.clone()), None) {
                 None => panic!("do something more intelligent here"),
                 Some(s) => s,
             };
@@ -85,6 +85,47 @@ impl<S: Scheduler + 'static> Runner<S> {
 
             *i += 1;
         });
+    }
+
+    pub fn fuzz_pct_inner<F>(&self, f: Arc<F>, p: [usize;16], i: &mut usize) 
+    where
+        F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
+    {
+        tracing::info!("using preemption points {:?}, will be trimmed", p);
+
+        CONTINUATION_POOL.set(&ContinuationPool::new(), || {
+            let schedule = match self.scheduler.borrow_mut().new_execution_fuzz(None, Some(p.clone())) {
+                None => panic!("do something more intelligent here"),
+                Some(s) => s,
+            };
+
+            let execution = Execution::new(self.scheduler.clone(), schedule);
+            let f = Arc::clone(&f);
+
+            span!(Level::INFO, "execution", i).in_scope(|| execution.run(&self.config, move || (*f)()));
+
+            *i += 1;
+        });
+    }
+
+    pub fn run_pct_fuzz<F>(&self, f: F) -> usize
+    where
+        F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
+    {
+        let this = AssertUnwindSafe(self);
+        let mut i = 0;
+        let f = Arc::new(f);
+
+        tracing::info!("starting fuzzer");
+
+        // just generate any number of preemption points. 
+        // no need to use all of them.
+        // assume user doesn't use more than 16 preemption points
+        fuzz!(|preemptions: Vec<usize>| {
+            this.fuzz_pct_inner(f.clone(), preemptions, &mut i);
+        });
+
+        i
     }
 
     /// Test the given function and return the number of times the function was invoked during the

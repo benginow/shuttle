@@ -8,6 +8,7 @@ mod pct;
 mod random;
 mod replay;
 mod round_robin;
+mod fuzzpct;
 
 pub(crate) mod metrics;
 pub(crate) mod serialization;
@@ -18,6 +19,7 @@ pub use crate::runtime::task::TaskId;
 pub use dfs::DfsScheduler;
 pub use fuzz::FuzzScheduler;
 pub use fuzz::CompletionMode;
+pub use fuzzpct::FuzzPctScheduler;
 pub use pct::PctScheduler;
 pub use random::RandomScheduler;
 pub use replay::ReplayScheduler;
@@ -112,7 +114,7 @@ pub trait Scheduler {
     /// Choose the next u64 value to return to the currently running task.
     fn next_u64(&mut self) -> u64;
 
-    fn new_execution_fuzz(&mut self, _schedule: Option<Schedule>) -> Option<Schedule> {
+    fn new_execution_fuzz(&mut self, _schedule: Option<Schedule>, _change_points: Option<[usize;16]>) -> Option<Schedule> {
         //other than for fuzz scheduler, this will be a no-op
         //basically, just don't be silly and don't use it! haha
         Some(Schedule::new(0))

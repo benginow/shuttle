@@ -16,19 +16,16 @@ pub enum CompletionMode {
 }
 pub struct FuzzScheduler {
     schedule: Option<Schedule>,
-    // complete: bool,
     steps: usize,
     iterations: usize,
     data_source: RandomDataSource,
     mode: CompletionMode,
-    // mostly just used for wraparound mode
 }
 
 impl FuzzScheduler {
     pub fn new(md: CompletionMode) -> Self {
         Self {
             schedule: Some(Schedule::new(0)),
-            // complete: true,
             steps: 0,
             iterations: 0,
             data_source: RandomDataSource::initialize(0),
@@ -93,10 +90,6 @@ impl FuzzScheduler {
                             let next = next % runnable_tasks.len();
                             let next = runnable_tasks[next];
                             self.steps += 1;
-                            // if self.steps >= schedule.steps.len() {
-                            //     // we have completed the thing
-                            //     self.complete = true;
-                            // }
                             Some(next)
                         }
                     }
@@ -119,16 +112,9 @@ impl Scheduler for FuzzScheduler {
         None
     }
 
-    
-
-    /// 
-    /// Runs the next task given by the fuzzed schedule
-    /// If there is no next task in the fuzzed schedule, just 
-    /// 
     fn next_task(
         &mut self,
         runnable_tasks: &[TaskId],
-        //make sure these are/are not needed?
         current_task: Option<TaskId>,
         _is_yielding: bool,
     ) -> Option<TaskId> {
@@ -188,7 +174,7 @@ impl Scheduler for FuzzScheduler {
         self.data_source.next_u64()
     }
 
-    fn new_execution_fuzz(&mut self, schedule: Option<Schedule>) -> Option<Schedule> {
+    fn new_execution_fuzz(&mut self, schedule: Option<Schedule>, change_pts: Option<[usize; 16]>) -> Option<Schedule> {
         tracing::info!(?schedule, "new execution");
         self.schedule = schedule;
         // self.complete = false;

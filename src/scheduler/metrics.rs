@@ -109,7 +109,7 @@ impl<S: Scheduler> Scheduler for MetricsScheduler<S> {
         self.inner.next_u64()
     }
 
-    fn new_execution_fuzz(&mut self, schedule: Option<Schedule>) -> Option<Schedule> {
+    fn new_execution_fuzz(&mut self, schedule: Option<Schedule>, _change_points: Option<[usize;16]>) -> Option<Schedule> {
         if self.iterations > 0 {
             self.record_and_reset_metrics();
 
@@ -123,7 +123,7 @@ impl<S: Scheduler> Scheduler for MetricsScheduler<S> {
         }
         self.iterations += 1;
 
-        self.inner.new_execution_fuzz(schedule)
+        self.inner.new_execution_fuzz(schedule, None)
     }
 }
 

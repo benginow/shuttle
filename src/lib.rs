@@ -192,9 +192,12 @@ pub mod scheduler;
 
 pub mod runtime;
 
+pub use scheduler::fuzz::{CompletionMode};
+
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 pub use runtime::runner::{PortfolioRunner, Runner};
+// use scheduler::CompletionMode;
 
 /// Configuration parameters for Shuttle
 #[derive(Clone, Debug)]
@@ -306,22 +309,65 @@ where
     F: Fn() + Send + Sync + 'static,
 {
     use crate::scheduler::RandomScheduler;
-
+    tracing::info!("checking random");
     let scheduler = RandomScheduler::new(iterations);
     let runner = Runner::new(scheduler, Default::default());
     runner.run(f);
 }
 
 
-pub fn check_fuzz<F>(f: F, _iterations: usize)
+pub fn check_fuzz<F>(f: F, _iterations: usize, mode: CompletionMode)
 where
     F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static,
 {
     use crate::scheduler::{FuzzScheduler, CompletionMode};
 
-    let scheduler = FuzzScheduler::new(CompletionMode::ROUND_ROBIN);
+    let scheduler = FuzzScheduler::new(mode);
     let runner = Runner::new(scheduler, Default::default());
     runner.run_fuzz(f);
+}
+
+pub fn check_pct_fuzz<F>(f: F, iterations: usize, depth: usize)
+where
+    F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static + Copy,
+{
+    use crate::scheduler::FuzzPctScheduler;
+    use afl::fuzz;
+
+
+    let scheduler = FuzzPctScheduler::new(depth, iterations);
+    let runner = Runner::new(scheduler, Default::default());
+    runner.run_pct_fuzz(f);
+}
+
+pub fn check_pct_fuzz_dumb<F>(f: F)
+where
+    F: Fn() + Send + Sync + RefUnwindSafe + UnwindSafe + 'static + Copy,
+{
+    use crate::scheduler::PctScheduler;
+    use afl::fuzz;
+    use arbitrary::Arbitrary;
+    use std::sync::Arc;
+
+    #[derive(Clone, Debug, Default, PartialEq, Eq, Arbitrary)]
+    struct PctParams {
+        max_depth: usize,
+        // not sure if we want to do this.. 
+        // may want to set this and just do it "enough" times? hmm
+        max_iterations: usize,
+    }
+
+    let f = Arc::new(f);
+    let mut counter = 0;
+    fuzz!(|p: PctParams| {
+        tracing::info!("round {:?}, fuzzing {:?}", counter, p);
+        let f = Arc::clone(&f);
+        let scheduler = PctScheduler::new(p.max_depth, p.max_iterations);
+        let runner = Runner::new(scheduler, Default::default());
+        runner.run(*f);
+        counter += 1;
+    });
+    
 }
 
 /// Run the given function under a PCT concurrency scheduler for some number of iterations at the
